@@ -12,53 +12,47 @@ namespace UniqueWordsCalculator
     {
         private static int _Default_Buffer_Size = 1024;
 
-        private IUniqueWordProcessingy _WordProcessor;
-        private StreamReader _FileManager;
+        private static IUniqueWordProcessingy _WordProcessor;
+        private static StreamReader _FileManager;
+
+        public int Buffer_Size { get; set; } = _Default_Buffer_Size;
 
         public StreamReader FileManager { set { _FileManager = value; } }
 
-        public FileUniqueWordReader(IUniqueWordProcessingy WordProcessor, int Default_Buffer_Size) {
+        public FileUniqueWordReader(IUniqueWordProcessingy WordProcessor) {
             _WordProcessor = WordProcessor;
-            _Default_Buffer_Size = Default_Buffer_Size;
         }
 
-        public int ParseFile()
+        public Task<bool> ParseFileAsync()
         {
-            int Count = 0;
+            char[] Buffer = new char[_Default_Buffer_Size];
+
+            int NumRead;
+            string TempWord = "";
             using (_FileManager)
             {
-                char[] Buffer = new char[_Default_Buffer_Size];
-
-                int NumRead;
-                string TempWord = "";
                 while ((NumRead = _FileManager.ReadBlock(Buffer, 0, Buffer.Length)) > 0)
                 {
-                    if (NumRead < Buffer.Length) { Array.Resize<char>(ref Buffer, NumRead); }
-                    foreach (char c in Buffer)
+                    for (int i = 0; i < NumRead; i++)
                     {
-                        if (Char.IsWhiteSpace(c) || !Char.IsAsciiLetterOrDigit(c))
+                        if (Char.IsWhiteSpace(Buffer[i]) || !Char.IsAsciiLetterOrDigit(Buffer[i]))
                         {
                             if (TempWord.Length > 0)
                             {
                                 TempWord = TempWord.Trim();
                                 _WordProcessor.ProcessWord(TempWord);
-                                Count++;
                                 TempWord = "";
-                            }    
+                            }
                         }
                         else
-                            TempWord = TempWord + c;
+                            TempWord += Buffer[i];
                     }
                 }
                 TempWord = TempWord.Trim();
                 if (TempWord.Length > 0)
-                {
                     _WordProcessor.ProcessWord(TempWord);
-                    Count++;
-                }
-                _FileManager.Close();
             }
-            return Count;
+            return Task.FromResult(true);
         }
     }
 }

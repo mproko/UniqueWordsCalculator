@@ -16,6 +16,7 @@ namespace UniqueWordsCalculator
     public class UniqueWordProcessing: IUniqueWordProcessingy
     {
         Dictionary<string, int> UniqueWordsList;
+        private ReaderWriterLockSlim cacheLock = new ReaderWriterLockSlim();
 
         public UniqueWordProcessing (Dictionary<string, int> UniqueWordsList) 
         { 
@@ -24,21 +25,40 @@ namespace UniqueWordsCalculator
 
         public void ProcessList(List<string> Words)
         {
-            Words.ForEach(w => 
+            int ovalue;
+            cacheLock.EnterReadLock();
+            try
             {
-                if (UniqueWordsList.ContainsKey(w))
-                    UniqueWordsList[w]++;
-                else
-                    UniqueWordsList.Add(w, 1);
-            });
+                Words.ForEach(w => 
+                {
+                    if (UniqueWordsList.TryGetValue(w, out ovalue))
+                        UniqueWordsList[w]++;
+                    else
+                        UniqueWordsList.Add(w, 1);
+                });
+            }
+            finally
+            {
+                cacheLock.ExitReadLock();
+            }
         }
 
         public void ProcessWord(string Word)
         {
-            if (UniqueWordsList.ContainsKey(Word))
-                UniqueWordsList[Word]++;
-            else
-                UniqueWordsList.Add(Word, 1);
+            int ovalue;
+            cacheLock.EnterReadLock();
+            try
+            {
+                if (UniqueWordsList.TryGetValue(Word, out ovalue))
+                    UniqueWordsList[Word]++;
+                else
+                    UniqueWordsList.Add(Word, 1);
+            }
+            finally
+            {
+                cacheLock.ExitReadLock();
+            }
+
         }
 
     }
